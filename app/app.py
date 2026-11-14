@@ -377,6 +377,44 @@ def graphs_to_zip_bytes(graphs: dict[str, Figure]) -> bytes:
 # --- User interface ------------------------------------------------------------
 
 
+@st.cache_data(show_spinner=False)
+def read_css(path: Path) -> str:
+    """Read the CSS file (cached: no disk access on every rerun)."""
+    return path.read_text(encoding="utf-8") if path.exists() else ""
+
+
+def load_style() -> None:
+    """Inject the custom CSS of the app."""
+    css = read_css(ASSETS_DIR / "style.css")
+    if css:
+        st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+
+
+def display_header() -> None:
+    """Centered title, then subtitle, description and author aligned on the left."""
+    st.title("VitaCheck - Diabetes Screening")
+    st.markdown(
+        """
+        <div class="app-description">
+            <p class="app-subtitle">Ingestion → Transformation → Analysis → Export</p>
+            <p class="app-text">
+                VitaCheck turns the raw diabetes check-up files into insights.
+                Load the check-up parts and the gender mapping, and the app consolidates
+                them, answers the key business questions (prevalence by gender, age,
+                BMI, hypertension, smoking history...), draws interactive graphs and
+                lets you filter the patients and export the results.
+            </p>
+            <p class="app-author">
+                Author: Cao Tri DO ·
+                <a href="mailto:do@em-lyon.com">do@em-lyon.com</a>
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.divider()
+
+
 def sidebar_header() -> None:
     """Sidebar: company logo and name."""
     with st.sidebar:
@@ -431,8 +469,8 @@ def main() -> None:
     st.set_page_config(
         page_title="VitaCheck - Diabetes Screening", page_icon="🩺", layout="wide"
     )
-    st.title("VitaCheck - Diabetes Screening")
-    st.caption("Ingestion → Transformation → Analysis → Export")
+    load_style()
+    display_header()
 
     sidebar_header()
     try:
@@ -483,12 +521,18 @@ def main() -> None:
     with tab_analysis:
         kpis = headline_kpis(df_filtered)
         cols = st.columns(len(kpis))
-        cols[0].metric("Patients screened", f"{kpis['Patients screened']:,}")
-        cols[1].metric("Diabetic patients", f"{kpis['Diabetic patients']:,}")
-        cols[2].metric(
-            "Prevalence of diabetes", f"{kpis['Prevalence of diabetes']:.1%}"
+        cols[0].metric(
+            "Patients screened", f"{kpis['Patients screened']:,}", border=True
         )
-        cols[3].metric("Average age", f"{kpis['Average age']:.1f}")
+        cols[1].metric(
+            "Diabetic patients", f"{kpis['Diabetic patients']:,}", border=True
+        )
+        cols[2].metric(
+            "Prevalence of diabetes",
+            f"{kpis['Prevalence of diabetes']:.1%}",
+            border=True,
+        )
+        cols[3].metric("Average age", f"{kpis['Average age']:.1f}", border=True)
 
         st.subheader("Business questions")
         st.dataframe(df_insights, hide_index=True, width="stretch")
