@@ -1,6 +1,6 @@
 # Streamlit app
 
-File: [`app/app.py`](../app/app.py). Assets: `app/assets/logo.svg`, `app/assets/style.css`.
+File: [`app/app.py`](../../app/app.py). Assets: `app/assets/logo.svg`, `app/assets/style.css`.
 Theme: `.streamlit/config.toml`.
 
 ## Run

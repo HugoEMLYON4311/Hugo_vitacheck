@@ -26,7 +26,7 @@ See [architecture](architecture.md).
 | Use the web app or change its code | [app.md](app.md) |
 | Read the answers and their interpretation | [results.md](results.md) |
 | Contribute, lint, extend | [development.md](development.md) |
-| Read the original assignment | [brief.md](brief.md) |
+| Read the original assignment | [brief.md](../brief.md) |
 
 ## Glossary
 

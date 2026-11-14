@@ -29,7 +29,7 @@ data/
 └── gender_mapping.csv
 ```
 
-Two options (detailed in [brief.md](brief.md#3-to-download-the-data-2-options)):
+Two options (detailed in [brief.md](../brief.md#3-to-download-the-data-2-options)):
 
 - download the files from Brightspace and paste them in `data/`
 - or run the download script from the brief: `cd scripts && uv run download_data.py && cd ..`

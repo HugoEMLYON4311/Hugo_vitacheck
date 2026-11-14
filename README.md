@@ -47,7 +47,7 @@ On the 100,000 screened patients:
 | Smoking history with the highest prevalence | `former` |
 | Exact duplicate lines (kept) | 3,854 |
 
-See [docs/results.md](docs/results.md) for the interpretation.
+See [docs/project_documentation/results.md](docs/project_documentation/results.md) for the interpretation.
 
 ## Requirements
 
@@ -78,7 +78,7 @@ The data is **not tracked by git** (`data/*` is ignored). The 3 files must be in
 | `gender_mapping.csv` | Mapping between `gender_code` (`F`, `M`, `O`) and `gender` |
 
 Download them from Brightspace, or with the download script given in [docs/brief.md](docs/brief.md#3-to-download-the-data-2-options).
-Details of every column: [docs/data.md](docs/data.md).
+Details of every column: [docs/project_documentation/data.md](docs/project_documentation/data.md).
 
 ## Usage
 
@@ -136,7 +136,7 @@ The app reproduces the whole pipeline on files loaded by the user:
    interactive graphs) and **Export**.
 4. **Download** the Excel report, the filtered dataset (CSV) and the graphs (PNG zip).
 
-The files are never read from `data/`: the user always loads them. Full guide: [docs/app.md](docs/app.md).
+The files are never read from `data/`: the user always loads them. Full guide: [docs/project_documentation/app.md](docs/project_documentation/app.md).
 
 ## Project structure
 
@@ -175,19 +175,19 @@ make format    # ruff format
 - Bare expressions at the end of a cell are allowed in the notebook and in `scripts/02_*.py`: they display
   the value in the Interactive Window (rule `B018` ignored in `pyproject.toml`).
 
-More in [docs/development.md](docs/development.md).
+More in [docs/project_documentation/development.md](docs/project_documentation/development.md).
 
 ## Documentation
 
 | Document | Content |
 |---|---|
-| [docs/index.md](docs/index.md) | Overview and reading guide |
-| [docs/getting-started.md](docs/getting-started.md) | Installation, data, first run, troubleshooting |
-| [docs/data.md](docs/data.md) | Datasets, data dictionary, quality checks |
-| [docs/architecture.md](docs/architecture.md) | Pipeline, the four versions, design decisions |
-| [docs/app.md](docs/app.md) | Streamlit app: user guide and function reference |
-| [docs/results.md](docs/results.md) | Answers to the questions and interpretation |
-| [docs/development.md](docs/development.md) | Tooling, conventions, how to extend the project |
+| [docs/project_documentation/index.md](docs/project_documentation/index.md) | Overview and reading guide |
+| [docs/project_documentation/getting-started.md](docs/project_documentation/getting-started.md) | Installation, data, first run, troubleshooting |
+| [docs/project_documentation/data.md](docs/project_documentation/data.md) | Datasets, data dictionary, quality checks |
+| [docs/project_documentation/architecture.md](docs/project_documentation/architecture.md) | Pipeline, the four versions, design decisions |
+| [docs/project_documentation/app.md](docs/project_documentation/app.md) | Streamlit app: user guide and function reference |
+| [docs/project_documentation/results.md](docs/project_documentation/results.md) | Answers to the questions and interpretation |
+| [docs/project_documentation/development.md](docs/project_documentation/development.md) | Tooling, conventions, how to extend the project |
 | [docs/brief.md](docs/brief.md) | Original case study brief |
 
 ## Author
