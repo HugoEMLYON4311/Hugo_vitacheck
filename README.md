@@ -62,7 +62,7 @@ Main dependencies: `pandas`, `matplotlib`, `openpyxl`, `streamlit` (it also prov
 ## Installation
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/emlyon-hids-python-2026/do_course06.git
 cd do_course06
 uv sync          # or: make install
 ```
