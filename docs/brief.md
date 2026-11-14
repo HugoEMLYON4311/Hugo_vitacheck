@@ -13,7 +13,7 @@ test whether they have diabetes.
 The Medical Director asks you for a reporting in order to:
 
 - Know **how many patients** were screened and **how many are diabetic** (the *prevalence*)
-- Understand **which profiles are most at risk**: gender, age group, BMI category, smoking history, hypertension
+- Understand **which profiles are most at risk**: gender, age, BMI, smoking history, hypertension
 - Check that the **biological markers** (HbA1c, blood glucose) clearly separate diabetic and non-diabetic patients
 - Share the results with the prevention teams so they can **target the next awareness campaign**
 
@@ -181,8 +181,8 @@ diabetes_part2.csv ─┘                       ├─ merge (on gender_code) �
 1. How many patients were screened?
 2. How many patients are diabetic, and what is the prevalence of diabetes?
 3. What is the prevalence of diabetes for women and for men?
-4. Which age group has the highest prevalence of diabetes?
-5. What is the prevalence of diabetes for obese patients compared to patients with a normal BMI?
+4. What is the average age of diabetic patients compared to non-diabetic patients?
+5. What is the prevalence of diabetes for patients with a BMI of 30 or more (obese) compared to patients with a BMI below 30?
 6. What is the average `HbA1c_level` and `blood_glucose_level` of diabetic patients compared to non-diabetic patients?
 7. How many times higher is the prevalence of diabetes for patients with hypertension than for patients without?
 8. Which `smoking_history` category has the highest prevalence of diabetes? Is it the one you expected?
@@ -190,8 +190,8 @@ diabetes_part2.csv ─┘                       ├─ merge (on gender_code) �
 ## 7. Objective 3 (optional): Make some graph analysis
 
 - Make a graph of the number of patients per gender
-- Make a graph of the prevalence of diabetes per age group
-- Make a graph of the prevalence of diabetes per BMI category
+- Make a graph of the prevalence of diabetes per gender
+- Make a graph comparing the distribution of `age` for diabetic and non-diabetic patients
 - Make a graph comparing the distribution of `blood_glucose_level` for diabetic and non-diabetic patients
 
 ## 8. Objective 4: Export your analysis
