@@ -1,7 +1,7 @@
-.PHONY: help install run v2 v3 run_app lint format clean
+.PHONY: help install run_demo run_v2 run_v3 run_app lint format clean
 
 help:  ## Show available commands
-	@grep -E '^[a-z0-9-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-10s %s\n", $$1, $$2}'
+	@grep -E '^[a-z0-9_-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-12s %s\n", $$1, $$2}'
 
 install:  ## Install dependencies
 	uv sync
