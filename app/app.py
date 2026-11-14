@@ -426,7 +426,7 @@ def sidebar_header() -> None:
 
 def choose_inputs() -> tuple[list[Source], Source]:
     """Sidebar: the user loads the files here, whatever the number of parts."""
-    st.sidebar.header("Data files")
+    st.sidebar.header("📁 Data files")
     part_files = st.sidebar.file_uploader(
         "Check-up parts (CSV): load as many as you have",
         type="csv",
@@ -443,7 +443,7 @@ def choose_inputs() -> tuple[list[Source], Source]:
 
 def apply_filters(df: pd.DataFrame) -> pd.DataFrame:
     """Sidebar: filter the patients. The analysis and the export use the filtered data."""
-    st.sidebar.header("Filters")
+    st.sidebar.header("🔎 Filters")
     genders = sorted(df["gender"].unique())
     smoking = sorted(df["smoking_history"].unique())
     selected_genders = st.sidebar.multiselect("Gender", genders, default=genders)
@@ -493,18 +493,18 @@ def main() -> None:
     df_insights = build_insights_table(parts, gender_mapping, df_final, df_filtered)
 
     tab_ingest, tab_transform, tab_analysis, tab_export = st.tabs(
-        ["1. Ingestion", "2. Transformation", "3. Analysis", "4. Export"]
+        ["📥 1. Ingestion", "🔄 2. Transformation", "📊 3. Analysis", "📤 4. Export"]
     )
 
     with tab_ingest:
-        st.subheader("Raw files")
+        st.subheader("🗂️ Raw files")
         st.dataframe(df_shapes.iloc[: len(datasets)], hide_index=True)
         for name, df in datasets.items():
             with st.expander(f"{name} ({df.shape[0]} lines)"):
                 st.dataframe(df.head(20))
 
     with tab_transform:
-        st.subheader("Consolidation")
+        st.subheader("🧩 Consolidation")
         st.markdown(
             f"1. Concatenate the {len(parts)} check-up parts\n"
             "2. Left-merge the gender mapping on `gender_code`"
@@ -514,7 +514,7 @@ def main() -> None:
             f"Final dataset: {df_final.shape[0]} lines, {df_final.shape[1]} columns"
         )
         st.dataframe(df_final.head(50))
-        st.subheader("Summary statistics")
+        st.subheader("📈 Summary statistics")
         st.dataframe(df_final.describe())
         st.dataframe(df_final.describe(include=["str"]).astype(str))
 
@@ -534,16 +534,16 @@ def main() -> None:
         )
         cols[3].metric("Average age", f"{kpis['Average age']:.1f}", border=True)
 
-        st.subheader("Business questions")
+        st.subheader("💼 Business questions")
         st.dataframe(df_insights, hide_index=True, width="stretch")
 
-        st.subheader("Graphs")
+        st.subheader("📉 Graphs")
         left, right = st.columns(2)
         for i, chart in enumerate(make_interactive_charts(df_filtered).values()):
             (left if i % 2 == 0 else right).altair_chart(chart, width="stretch")
 
     with tab_export:
-        st.subheader("Download the insights")
+        st.subheader("⬇️ Download the insights")
         st.caption(
             f"The report and the graphs use the {len(df_filtered):,} filtered patients."
         )
