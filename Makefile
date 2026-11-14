@@ -6,13 +6,13 @@ help:  ## Show available commands
 install:  ## Install dependencies
 	uv sync
 
-run:  ## Run the demo script
+run_demo:  ## Run the demo script
 	uv run python scripts/demo.py
 
-v2:  ## Run the case study, version 2 (script with cells)
+run_v2:  ## Run the case study, version 2 (script with cells)
 	uv run scripts/02_diabetes_cells.py
 
-v3:  ## Run the case study, version 3 (script with functions)
+run_v3:  ## Run the case study, version 3 (script with functions)
 	uv run scripts/03_diabetes_functions.py
 
 lint:  ## Check code with ruff
