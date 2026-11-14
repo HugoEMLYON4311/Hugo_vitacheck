@@ -158,21 +158,11 @@ diabetes_part2.csv ─┘                       ├─ merge (on gender_code) �
    - Load the data (`diabetes_part1`, `diabetes_part2` and `gender_mapping`)
    - Assemble `diabetes_part1` and `diabetes_part2` together into `patients` (**concatenation**)
    - Assemble the `patients` table with the mapping table to get the `gender` column (**merge**)
-   - Compute the `bmi_category` column with the WHO categories:
-
-     | BMI | `bmi_category` |
-     |---|---|
-     | below 18.5 | `Underweight` |
-     | from 18.5 to below 25 | `Normal` |
-     | from 25 to below 30 | `Overweight` |
-     | 30 and above | `Obese` |
-
-   - Compute the `age_group` column: `0-17`, `18-39`, `40-59` and `60+`
 
 2. Export the resulting table in an Excel file that could be used by any other team member.
 
 > [!TIP]
-> Look at `pd.concat`, `pd.merge` (or `DataFrame.merge`) and `pd.cut`.
+> Look at `pd.concat`, `pd.merge` (or `DataFrame.merge`).
 > After the merge, check that **no line was lost** and that the `gender` column has **no missing value**.
 
 ## 6. Objective 2: Answer some questions
