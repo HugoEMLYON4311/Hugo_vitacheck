@@ -14,17 +14,17 @@ import zipfile
 from pathlib import Path
 from typing import IO
 
+import altair as alt
 import matplotlib
 
 matplotlib.use("Agg")  # no GUI backend: the figures are rendered by Streamlit
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import streamlit as st
 from matplotlib.figure import Figure
 from openpyxl.drawing.image import Image
-
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 PART_COLUMNS = {
     "gender_code",
@@ -37,9 +37,10 @@ PART_COLUMNS = {
     "blood_glucose_level",
     "diabetes",
 }
+ASSETS_DIR = Path(__file__).resolve().parent / "assets"
 MAPPING_COLUMNS = {"gender_code", "gender"}
 
-Source = str | Path | IO[bytes]
+Source = IO[bytes]
 
 
 # --- Ingestion and transformation ----------------------------------------------
@@ -55,21 +56,27 @@ def read_csv(source: Source, required: set[str], name: str) -> pd.DataFrame:
 
 
 def load_data(
-    part1: Source, part2: Source, gender_mapping: Source
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Ingestion: load the two parts of the check-ups and the gender mapping table."""
-    return (
-        read_csv(part1, PART_COLUMNS, "diabetes_part1.csv"),
-        read_csv(part2, PART_COLUMNS, "diabetes_part2.csv"),
-        read_csv(gender_mapping, MAPPING_COLUMNS, "gender_mapping.csv"),
-    )
+    part_files: list[Source], mapping_file: Source
+) -> tuple[dict[str, pd.DataFrame], pd.DataFrame]:
+    """Ingestion: load any number of check-up parts and the gender mapping table.
+
+    The parts are returned in a dictionary {file name: DataFrame}.
+    """
+    parts = {}
+    for file in part_files:
+        name = getattr(file, "name", "part")
+        if name in parts:
+            raise ValueError(f"The file {name} was loaded twice")
+        parts[name] = read_csv(file, PART_COLUMNS, name)
+    gender_mapping = read_csv(mapping_file, MAPPING_COLUMNS, "gender mapping")
+    return parts, gender_mapping
 
 
 def consolidate(
-    part1: pd.DataFrame, part2: pd.DataFrame, gender_mapping: pd.DataFrame
+    parts: dict[str, pd.DataFrame], gender_mapping: pd.DataFrame
 ) -> pd.DataFrame:
-    """Transformation: concatenate the two parts, then merge the gender mapping table."""
-    patients = pd.concat([part1, part2], ignore_index=True)
+    """Transformation: concatenate the parts, then merge the gender mapping table."""
+    patients = pd.concat(parts.values(), ignore_index=True)
     df_final = patients.merge(gender_mapping, on="gender_code", how="left")
 
     if len(df_final) != len(patients):
@@ -86,13 +93,13 @@ def consolidate(
 
 
 def quality_checks(
-    part1: pd.DataFrame, part2: pd.DataFrame, df_final: pd.DataFrame
+    parts: dict[str, pd.DataFrame], df_final: pd.DataFrame
 ) -> pd.DataFrame:
     """Return a table of checks proving that the consolidation is correct."""
-    same_length = len(df_final) == len(part1) + len(part2)
+    same_length = len(df_final) == sum(len(df) for df in parts.values())
     checks = {
         "Check": [
-            "Lines after concatenation = part1 + part2",
+            "Lines after concatenation = sum of the parts",
             "Lines unchanged by the gender merge",
             "Every patient has a gender",
             "Missing values in the final dataset",
@@ -135,6 +142,13 @@ def headline_kpis(df: pd.DataFrame) -> dict[str, float]:
     }
 
 
+def ratio(numerator: float | None, denominator: float | None) -> float | None:
+    """Ratio of two values, None when one is missing (e.g. a group filtered out) or zero."""
+    if numerator is None or not denominator:
+        return None
+    return numerator / denominator
+
+
 def answer_business_questions(df: pd.DataFrame) -> dict[str, object]:
     """Return a dictionary {question: answer} for the business questions."""
     by_gender = prevalence_by(df, "gender")
@@ -170,10 +184,9 @@ def answer_business_questions(df: pd.DataFrame) -> dict[str, object]:
         "What is the average blood_glucose_level of non-diabetic patients": markers[
             "blood_glucose_level"
         ].get(0),
-        "How many times higher is the prevalence with hypertension": by_hypertension.get(
-            1
-        )
-        / by_hypertension.get(0),
+        "How many times higher is the prevalence with hypertension": ratio(
+            by_hypertension.get(1), by_hypertension.get(0)
+        ),
         "Which smoking_history category has the highest prevalence": by_smoking.index[
             0
         ],
@@ -181,23 +194,24 @@ def answer_business_questions(df: pd.DataFrame) -> dict[str, object]:
 
 
 def build_insights_table(
-    part1: pd.DataFrame,
-    part2: pd.DataFrame,
+    parts: dict[str, pd.DataFrame],
     gender_mapping: pd.DataFrame,
     df_final: pd.DataFrame,
+    df_filtered: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Question / Answer table combining dataset sizes and business questions."""
+    """Question / Answer table: dataset sizes, then business questions on the filtered data."""
     # Duplicates are kept: without a patient identifier, two patients can share the same profile
     answers = {
-        "How many lines are in diabetes_part1.csv": len(part1),
-        "How many lines are in diabetes_part2.csv": len(part2),
-        "How many lines are in gender_mapping.csv": len(gender_mapping),
+        **{f"How many lines are in {name}": len(df) for name, df in parts.items()},
+        "How many lines are in the gender mapping": len(gender_mapping),
         "How many lines are exact duplicates": int(df_final.duplicated().sum()),
-        **answer_business_questions(df_final),
+        "Patients selected by the filters": f"{len(df_filtered)} of {len(df_final)}",
+        **answer_business_questions(df_filtered),
     }
-    return pd.DataFrame(list(answers.items()), columns=["Question", "Answer"]).astype(
-        {"Answer": str}
-    )
+    table = pd.DataFrame(list(answers.items()), columns=["Question", "Answer"])
+    # "n/a" when a group is filtered out (e.g. no man left after filtering on women)
+    table["Answer"] = table["Answer"].astype(str).fillna("n/a")
+    return table
 
 
 # --- Charts --------------------------------------------------------------------
@@ -237,6 +251,76 @@ def make_graphs(df: pd.DataFrame) -> dict[str, Figure]:
         ),
         "Distribution of age": histogram_by_diabetes(df, "age", "Distribution of age"),
         "Distribution of blood glucose level": histogram_by_diabetes(
+            df, "blood_glucose_level", "Distribution of blood glucose level"
+        ),
+    }
+
+
+def interactive_bar_chart(
+    series: pd.Series, title: str, value_format: str = ",d"
+) -> alt.Chart:
+    """Interactive bar chart (tooltip on hover) of a series indexed by category."""
+    data = series.rename("value").rename_axis("category").reset_index()
+    return (
+        alt.Chart(data, title=title)
+        .mark_bar()
+        .encode(
+            x=alt.X("category:N", title=None, axis=alt.Axis(labelAngle=0)),
+            y=alt.Y("value:Q", title=None, axis=alt.Axis(format=value_format)),
+            tooltip=[
+                alt.Tooltip("category:N", title="Category"),
+                alt.Tooltip("value:Q", title="Value", format=value_format),
+            ],
+        )
+    )
+
+
+def interactive_distribution(df: pd.DataFrame, column: str, title: str) -> alt.Chart:
+    """Interactive distribution of `column` for non-diabetic and diabetic patients."""
+    edges = np.histogram_bin_edges(df[column], bins=40)
+    frames = []
+    for value, label in [(0, "non-diabetic"), (1, "diabetic")]:
+        density, _ = np.histogram(
+            df.loc[df["diabetes"] == value, column], bins=edges, density=True
+        )
+        frames.append(
+            pd.DataFrame(
+                {
+                    column: (edges[:-1] + edges[1:]) / 2,
+                    "density": density,
+                    "patients": label,
+                }
+            )
+        )
+    return (
+        alt.Chart(pd.concat(frames), title=title)
+        .mark_area(opacity=0.5, interpolate="step")
+        .encode(
+            x=alt.X(f"{column}:Q"),
+            y=alt.Y("density:Q", stack=None),
+            color=alt.Color("patients:N", title=None),
+            tooltip=[
+                alt.Tooltip(f"{column}:Q", format=".1f"),
+                alt.Tooltip("density:Q", format=".4f"),
+                alt.Tooltip("patients:N"),
+            ],
+        )
+    )
+
+
+def make_interactive_charts(df: pd.DataFrame) -> dict[str, alt.Chart]:
+    """Interactive version of the graphs, displayed in the app, keyed by title."""
+    return {
+        "Number of patients per gender": interactive_bar_chart(
+            df["gender"].value_counts(), "Number of patients per gender"
+        ),
+        "Prevalence of diabetes per gender": interactive_bar_chart(
+            prevalence_by(df, "gender"), "Prevalence of diabetes per gender", ".1%"
+        ),
+        "Distribution of age": interactive_distribution(
+            df, "age", "Distribution of age"
+        ),
+        "Distribution of blood glucose level": interactive_distribution(
             df, "blood_glucose_level", "Distribution of blood glucose level"
         ),
     }
@@ -293,53 +377,82 @@ def graphs_to_zip_bytes(graphs: dict[str, Figure]) -> bytes:
 # --- User interface ------------------------------------------------------------
 
 
-def choose_inputs() -> tuple[Source, Source, Source]:
-    """Sidebar: let the user choose the data source and return the three files."""
-    st.sidebar.header("1. Data source")
-    source = st.sidebar.radio(
-        "Where do the files come from?",
-        ["Project data/ folder", "Upload my own files"],
+def sidebar_header() -> None:
+    """Sidebar: company logo and name."""
+    with st.sidebar:
+        logo_column, name_column = st.columns([1, 3], vertical_alignment="center")
+        logo_column.image(str(ASSETS_DIR / "logo.svg"), width=48)
+        name_column.markdown("**VitaCheck**  \nDiabetes Screening")
+        st.divider()
+
+
+def choose_inputs() -> tuple[list[Source], Source]:
+    """Sidebar: the user loads the files here, whatever the number of parts."""
+    st.sidebar.header("Data files")
+    part_files = st.sidebar.file_uploader(
+        "Check-up parts (CSV): load as many as you have",
+        type="csv",
+        accept_multiple_files=True,
+    )
+    mapping_file = st.sidebar.file_uploader("Gender mapping (CSV)", type="csv")
+    if not part_files or not mapping_file:
+        st.info(
+            "Load the check-up parts and the gender mapping in the sidebar to start."
+        )
+        st.stop()
+    return part_files, mapping_file
+
+
+def apply_filters(df: pd.DataFrame) -> pd.DataFrame:
+    """Sidebar: filter the patients. The analysis and the export use the filtered data."""
+    st.sidebar.header("Filters")
+    genders = sorted(df["gender"].unique())
+    smoking = sorted(df["smoking_history"].unique())
+    selected_genders = st.sidebar.multiselect("Gender", genders, default=genders)
+    selected_smoking = st.sidebar.multiselect(
+        "Smoking history", smoking, default=smoking
     )
 
-    if source == "Project data/ folder":
-        return (
-            DATA_DIR / "diabetes_part1.csv",
-            DATA_DIR / "diabetes_part2.csv",
-            DATA_DIR / "gender_mapping.csv",
-        )
+    mask = df["gender"].isin(selected_genders) & df["smoking_history"].isin(
+        selected_smoking
+    )
+    age_min, age_max = int(df["age"].min()), int(df["age"].max()) + 1
+    if age_min < age_max:
+        low, high = st.sidebar.slider("Age", age_min, age_max, (age_min, age_max))
+        mask &= df["age"].between(low, high)
 
-    up_part1 = st.sidebar.file_uploader("diabetes_part1.csv", type="csv")
-    up_part2 = st.sidebar.file_uploader("diabetes_part2.csv", type="csv")
-    up_mapping = st.sidebar.file_uploader("gender_mapping.csv", type="csv")
-    if not (up_part1 and up_part2 and up_mapping):
-        st.info("Upload the three CSV files in the sidebar to start.")
-        st.stop()
-    return up_part1, up_part2, up_mapping
+    filtered = df[mask]
+    st.sidebar.caption(f"{len(filtered):,} of {len(df):,} patients selected")
+    return filtered
 
 
 def main() -> None:
     """Run the pipeline and display the four tabs."""
-    st.set_page_config(page_title="VitaCheck - Diabetes Screening", layout="wide")
+    st.set_page_config(
+        page_title="VitaCheck - Diabetes Screening", page_icon="🩺", layout="wide"
+    )
     st.title("VitaCheck - Diabetes Screening")
     st.caption("Ingestion → Transformation → Analysis → Export")
 
+    sidebar_header()
     try:
-        part1, part2, gender_mapping = load_data(*choose_inputs())
-        df_final = consolidate(part1, part2, gender_mapping)
-    except (FileNotFoundError, ValueError) as error:
+        parts, gender_mapping = load_data(*choose_inputs())
+        df_final = consolidate(parts, gender_mapping)
+    except ValueError as error:
         st.error(f"Could not run the pipeline: {error}")
         st.stop()
 
+    datasets = {**parts, "gender mapping": gender_mapping}
+    df_filtered = apply_filters(df_final)
+    if df_filtered.empty:
+        st.warning("No patient matches the filters: widen the selection.")
+        st.stop()
+
     df_shapes = compute_shapes(
-        {
-            "diabetes_part1.csv": part1,
-            "diabetes_part2.csv": part2,
-            "gender_mapping.csv": gender_mapping,
-            "final dataset": df_final,
-        }
+        {**datasets, "final dataset": df_final, "filtered dataset": df_filtered}
     )
-    df_describe = df_final.describe(include="all")
-    df_insights = build_insights_table(part1, part2, gender_mapping, df_final)
+    df_describe = df_filtered.describe(include="all")
+    df_insights = build_insights_table(parts, gender_mapping, df_final, df_filtered)
 
     tab_ingest, tab_transform, tab_analysis, tab_export = st.tabs(
         ["1. Ingestion", "2. Transformation", "3. Analysis", "4. Export"]
@@ -347,22 +460,18 @@ def main() -> None:
 
     with tab_ingest:
         st.subheader("Raw files")
-        st.dataframe(df_shapes.iloc[:3], hide_index=True)
-        for name, df in [
-            ("diabetes_part1.csv", part1),
-            ("diabetes_part2.csv", part2),
-            ("gender_mapping.csv", gender_mapping),
-        ]:
+        st.dataframe(df_shapes.iloc[: len(datasets)], hide_index=True)
+        for name, df in datasets.items():
             with st.expander(f"{name} ({df.shape[0]} lines)"):
                 st.dataframe(df.head(20))
 
     with tab_transform:
         st.subheader("Consolidation")
         st.markdown(
-            "1. Concatenate `diabetes_part1.csv` and `diabetes_part2.csv`\n"
-            "2. Left-merge `gender_mapping.csv` on `gender_code`"
+            f"1. Concatenate the {len(parts)} check-up parts\n"
+            "2. Left-merge the gender mapping on `gender_code`"
         )
-        st.dataframe(quality_checks(part1, part2, df_final), hide_index=True)
+        st.dataframe(quality_checks(parts, df_final), hide_index=True)
         st.write(
             f"Final dataset: {df_final.shape[0]} lines, {df_final.shape[1]} columns"
         )
@@ -372,7 +481,7 @@ def main() -> None:
         st.dataframe(df_final.describe(include=["str"]).astype(str))
 
     with tab_analysis:
-        kpis = headline_kpis(df_final)
+        kpis = headline_kpis(df_filtered)
         cols = st.columns(len(kpis))
         cols[0].metric("Patients screened", f"{kpis['Patients screened']:,}")
         cols[1].metric("Diabetic patients", f"{kpis['Diabetic patients']:,}")
@@ -385,13 +494,16 @@ def main() -> None:
         st.dataframe(df_insights, hide_index=True, width="stretch")
 
         st.subheader("Graphs")
-        graphs = make_graphs(df_final)
         left, right = st.columns(2)
-        for i, fig in enumerate(graphs.values()):
-            (left if i % 2 == 0 else right).pyplot(fig)
+        for i, chart in enumerate(make_interactive_charts(df_filtered).values()):
+            (left if i % 2 == 0 else right).altair_chart(chart, width="stretch")
 
     with tab_export:
         st.subheader("Download the insights")
+        st.caption(
+            f"The report and the graphs use the {len(df_filtered):,} filtered patients."
+        )
+        graphs = make_graphs(df_filtered)
         st.download_button(
             "Analysis report (Excel)",
             to_excel_bytes(df_shapes, df_describe, df_insights, graphs),
@@ -399,8 +511,8 @@ def main() -> None:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
         st.download_button(
-            "Final dataset (CSV)",
-            to_csv_bytes(df_final),
+            "Filtered dataset (CSV)",
+            to_csv_bytes(df_filtered),
             file_name="diabetes_final.csv",
             mime="text/csv",
         )

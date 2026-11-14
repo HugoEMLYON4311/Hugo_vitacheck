@@ -29,8 +29,8 @@ make run    # run the demo script
 make run_app   # or: uv run streamlit run app/app.py
 ```
 
-The app reproduces the pipeline (ingestion, transformation, macro analysis) on the files of `data/`
-or on uploaded CSV files, and exports the insights (Excel report, final CSV, PNG graphs).
+The app reproduces the pipeline (ingestion, transformation, macro analysis) on the CSV files loaded by the user
+(any number of check-up parts plus the gender mapping), and exports the insights (Excel report, final CSV, PNG graphs).
 
 ## Project structure
 
