@@ -52,28 +52,27 @@ df_final.to_excel(OUTPUT_DIR / "diabetes_final.xlsx", index=False)
 # ### Technical questions from the Data Team
 
 # %% Q1. Number of lines and columns
-df_shapes = pd.DataFrame(
-    {
-        "dataset": [
-            "diabetes_part1.csv",
-            "diabetes_part2.csv",
-            "gender_mapping.csv",
-            "final dataset",
-        ],
-        "nb_lines": [
-            part1.shape[0],
-            part2.shape[0],
-            gender_mapping.shape[0],
-            df_final.shape[0],
-        ],
-        "nb_columns": [
-            part1.shape[1],
-            part2.shape[1],
-            gender_mapping.shape[1],
-            df_final.shape[1],
-        ],
-    }
-)
+shapes = {
+    "dataset": [
+        "diabetes_part1.csv",
+        "diabetes_part2.csv",
+        "gender_mapping.csv",
+        "final dataset",
+    ],
+    "nb_lines": [
+        part1.shape[0],
+        part2.shape[0],
+        gender_mapping.shape[0],
+        df_final.shape[0],
+    ],
+    "nb_columns": [
+        part1.shape[1],
+        part2.shape[1],
+        gender_mapping.shape[1],
+        df_final.shape[1],
+    ],
+}
+df_shapes = pd.DataFrame(shapes)
 df_shapes
 
 # %% Q2. Column names
