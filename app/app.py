@@ -42,6 +42,11 @@ MAPPING_COLUMNS = {"gender_code", "gender"}
 
 Source = IO[bytes]
 
+# Colours of the graphs
+GENDER_COLORS = {"Female": "#ec4899", "Male": "#3b82f6"}  # pink, blue
+OTHER_COLOR = "#9ca3af"  # grey, for any other gender
+DIABETES_COLORS = {"non-diabetic": "#14b8a6", "diabetic": "#f97316"}  # teal, orange
+
 
 # --- Ingestion and transformation ----------------------------------------------
 
@@ -218,9 +223,10 @@ def build_insights_table(
 
 
 def bar_chart(series: pd.Series, title: str) -> Figure:
-    """Bar chart of a series."""
+    """Bar chart of a series indexed by gender: pink for women, blue for men."""
     fig, ax = plt.subplots()
-    series.plot.bar(ax=ax, title=title, rot=0)
+    colors = [GENDER_COLORS.get(category, OTHER_COLOR) for category in series.index]
+    series.plot.bar(ax=ax, title=title, rot=0, color=colors)
     return fig
 
 
@@ -234,6 +240,7 @@ def histogram_by_diabetes(df: pd.DataFrame, column: str, title: str) -> Figure:
             alpha=0.5,
             density=True,
             label=label,
+            color=DIABETES_COLORS[label],
         )
     ax.set_title(title)
     ax.legend()
@@ -259,14 +266,21 @@ def make_graphs(df: pd.DataFrame) -> dict[str, Figure]:
 def interactive_bar_chart(
     series: pd.Series, title: str, value_format: str = ",d"
 ) -> alt.Chart:
-    """Interactive bar chart (tooltip on hover) of a series indexed by category."""
+    """Interactive bar chart (tooltip on hover) of a series indexed by gender."""
     data = series.rename("value").rename_axis("category").reset_index()
+    categories = list(data["category"])
+    colors = [GENDER_COLORS.get(category, OTHER_COLOR) for category in categories]
     return (
         alt.Chart(data, title=title)
         .mark_bar()
         .encode(
             x=alt.X("category:N", title=None, axis=alt.Axis(labelAngle=0)),
             y=alt.Y("value:Q", title=None, axis=alt.Axis(format=value_format)),
+            color=alt.Color(
+                "category:N",
+                scale=alt.Scale(domain=categories, range=colors),
+                legend=None,
+            ),
             tooltip=[
                 alt.Tooltip("category:N", title="Category"),
                 alt.Tooltip("value:Q", title="Value", format=value_format),
@@ -298,7 +312,13 @@ def interactive_distribution(df: pd.DataFrame, column: str, title: str) -> alt.C
         .encode(
             x=alt.X(f"{column}:Q"),
             y=alt.Y("density:Q", stack=None),
-            color=alt.Color("patients:N", title=None),
+            color=alt.Color(
+                "patients:N",
+                title=None,
+                scale=alt.Scale(
+                    domain=list(DIABETES_COLORS), range=list(DIABETES_COLORS.values())
+                ),
+            ),
             tooltip=[
                 alt.Tooltip(f"{column}:Q", format=".1f"),
                 alt.Tooltip("density:Q", format=".4f"),
