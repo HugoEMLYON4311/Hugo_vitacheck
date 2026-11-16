@@ -63,8 +63,8 @@ Main dependencies: `pandas`, `matplotlib`, `openpyxl`, `streamlit` (it also prov
 
 ```bash
 git clone https://github.com/emlyon-hids-python-2026/do_course06.git
-cd do_course06
-uv sync          # or: make install
+cd Hugo_course06
+uv sync        # or: make install
 ```
 
 ## Get the data
@@ -192,4 +192,4 @@ More in [docs/project_documentation/development.md](docs/project_documentation/d
 
 ## Author
 
-Cao Tri DO - [do@em-lyon.com](mailto:do@em-lyon.com)
+Hugo Alarcon - [hugo.alarcon@edu.em-lyon.com]
